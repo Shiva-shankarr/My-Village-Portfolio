@@ -15,6 +15,68 @@ const upload = multer({
 });
 
 const toDataUri = (file) => `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
+const VALID_CATEGORIES = ['development', 'education', 'health', 'culture', 'general'];
+
+const parseBoolean = (value, fallback) => {
+  if (value === undefined || value === null || value === '') return fallback;
+  if (typeof value === 'boolean') return value;
+  return String(value).toLowerCase() === 'true';
+};
+
+const parseTags = (tags) => {
+  if (!tags) return [];
+  if (Array.isArray(tags)) {
+    return tags.map((tag) => String(tag).trim()).filter(Boolean);
+  }
+  return String(tags)
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+};
+
+const validateUpdatePayload = ({ title, content, category }) => {
+  if (!title || !String(title).trim()) {
+    return 'Title is required';
+  }
+  if (!content || !String(content).trim()) {
+    return 'Content is required';
+  }
+  if (!category || !VALID_CATEGORIES.includes(String(category).toLowerCase())) {
+    return `Category must be one of: ${VALID_CATEGORIES.join(', ')}`;
+  }
+  return null;
+};
+
+const isCloudinaryConfigured = () => {
+  return Boolean(
+    process.env.CLOUDINARY_CLOUD_NAME
+      && process.env.CLOUDINARY_API_KEY
+      && process.env.CLOUDINARY_API_SECRET
+  );
+};
+
+const uploadFilesToCloudinary = async (files, folder) => {
+  const images = [];
+  const cloudinaryIds = [];
+
+  for (const [index, file] of files.entries()) {
+    if (!file?.buffer || !file?.mimetype) {
+      throw new Error(`Invalid image payload at index ${index}`);
+    }
+
+    const result = await cloudinary.uploader.upload(toDataUri(file), {
+      folder,
+      resource_type: 'auto',
+      quality: 'auto',
+      fetch_format: 'auto'
+    });
+
+    images.push(result.secure_url);
+    cloudinaryIds.push(result.public_id);
+  }
+
+  return { images, cloudinaryIds };
+};
 
 // @route   GET /api/updates
 // @desc    Get all updates with pagination, search, and filtering
@@ -266,6 +328,12 @@ router.get('/:id', async (req, res) => {
 // @access  Private/Admin
 router.post('/', protect, authorize('admin'), upload.array('images', 5), async (req, res) => {
   try {
+    console.log('POST /api/updates hit', {
+      bodyKeys: Object.keys(req.body || {}),
+      filesCount: req.files?.length || 0,
+      userId: req.user?._id
+    });
+
     const {
       title,
       content,
@@ -277,48 +345,75 @@ router.post('/', protect, authorize('admin'), upload.array('images', 5), async (
       isPublished,
       publishDate
     } = req.body;
-    const images = [];
-    const cloudinaryIds = [];
+
+    const normalizedCategory = String(category || '').toLowerCase();
+    const validationError = validateUpdatePayload({
+      title,
+      content,
+      category: normalizedCategory
+    });
+    if (validationError) {
+      return res.status(400).json({
+        success: false,
+        message: validationError
+      });
+    }
+
+    const files = Array.isArray(req.files) ? req.files : [];
+    let images = [];
+    let cloudinaryIds = [];
 
     // Upload images to cloudinary if any
-    if (req.files && req.files.length > 0) {
-      for (const file of req.files) {
-        const result = await cloudinary.uploader.upload(toDataUri(file), {
-          folder: 'updates',
-          resource_type: 'auto',
-          quality: 'auto',
-          fetch_format: 'auto'
+    if (files.length > 0) {
+      if (!isCloudinaryConfigured()) {
+        return res.status(500).json({
+          success: false,
+          message: 'Cloudinary is not configured on server'
         });
-        images.push(result.secure_url);
-        cloudinaryIds.push(result.public_id);
       }
+
+      ({ images, cloudinaryIds } = await uploadFilesToCloudinary(files, 'updates'));
+      console.log('POST /api/updates uploaded images', { uploadedCount: images.length });
     }
+
+    console.log('POST /api/updates saving record', {
+      title,
+      category: normalizedCategory,
+      hasImages: images.length > 0,
+      publishDate: publishDate || null
+    });
 
     const update = await Update.create({
       title,
       content,
-      category,
+      category: normalizedCategory,
       summary,
-      tags: tags
-        ? tags.split(',').map((tag) => tag.trim()).filter(Boolean)
-        : [],
+      tags: parseTags(tags),
       priority,
-      isPinned: isPinned === 'true' || isPinned === true,
-      isPublished: isPublished === undefined ? true : isPublished === 'true' || isPublished === true,
+      isPinned: parseBoolean(isPinned, false),
+      isPublished: parseBoolean(isPublished, true),
       publishDate: publishDate ? new Date(publishDate) : new Date(),
       images,
       cloudinaryIds,
       author: req.user?._id
     });
 
+    console.log('POST /api/updates created', { id: update._id });
+
     res.status(201).json({
       success: true,
       data: update
     });
   } catch (error) {
+    console.error('Error in POST /api/updates:', {
+      message: error.message,
+      stack: error.stack,
+      bodyKeys: Object.keys(req.body || {}),
+      filesCount: req.files?.length || 0
+    });
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 });
@@ -328,6 +423,13 @@ router.post('/', protect, authorize('admin'), upload.array('images', 5), async (
 // @access  Private/Admin
 router.put('/:id', protect, authorize('admin'), upload.array('images', 5), async (req, res) => {
   try {
+    console.log('PUT /api/updates/:id hit', {
+      id: req.params.id,
+      bodyKeys: Object.keys(req.body || {}),
+      filesCount: req.files?.length || 0,
+      userId: req.user?._id
+    });
+
     const {
       title,
       content,
@@ -339,6 +441,20 @@ router.put('/:id', protect, authorize('admin'), upload.array('images', 5), async
       isPublished,
       publishDate
     } = req.body;
+
+    const normalizedCategory = String(category || '').toLowerCase();
+    const validationError = validateUpdatePayload({
+      title,
+      content,
+      category: normalizedCategory
+    });
+    if (validationError) {
+      return res.status(400).json({
+        success: false,
+        message: validationError
+      });
+    }
+
     let update = await Update.findById(req.params.id);
 
     if (!update) {
@@ -351,20 +467,27 @@ router.put('/:id', protect, authorize('admin'), upload.array('images', 5), async
     const updateData = {
       title,
       content,
-      category,
+      category: normalizedCategory,
       summary,
-      tags: tags
-        ? tags.split(',').map((tag) => tag.trim()).filter(Boolean)
-        : update.tags,
+      tags: tags === undefined ? update.tags : parseTags(tags),
       priority,
-      isPinned: isPinned === undefined ? update.isPinned : isPinned === 'true' || isPinned === true,
-      isPublished: isPublished === undefined ? update.isPublished : isPublished === 'true' || isPublished === true,
+      isPinned: parseBoolean(isPinned, update.isPinned),
+      isPublished: parseBoolean(isPublished, update.isPublished),
       publishDate: publishDate ? new Date(publishDate) : (update.publishDate || new Date()),
       updatedAt: Date.now()
     };
 
+    const files = Array.isArray(req.files) ? req.files : [];
+
     // Handle new images if any
-    if (req.files && req.files.length > 0) {
+    if (files.length > 0) {
+      if (!isCloudinaryConfigured()) {
+        return res.status(500).json({
+          success: false,
+          message: 'Cloudinary is not configured on server'
+        });
+      }
+
       // Delete old images from cloudinary
       const previousCloudinaryIds = Array.isArray(update.cloudinaryIds)
         ? update.cloudinaryIds.filter(Boolean)
@@ -375,22 +498,22 @@ router.put('/:id', protect, authorize('admin'), upload.array('images', 5), async
       }
 
       // Upload new images
-      const images = [];
-      const cloudinaryIds = [];
-      for (const file of req.files) {
-        const result = await cloudinary.uploader.upload(toDataUri(file), {
-          folder: 'updates',
-          resource_type: 'auto',
-          quality: 'auto',
-          fetch_format: 'auto'
-        });
-        images.push(result.secure_url);
-        cloudinaryIds.push(result.public_id);
-      }
+      const { images, cloudinaryIds } = await uploadFilesToCloudinary(files, 'updates');
 
       updateData.images = images;
       updateData.cloudinaryIds = cloudinaryIds;
+
+      console.log('PUT /api/updates/:id uploaded images', {
+        id: req.params.id,
+        uploadedCount: images.length
+      });
     }
+
+    console.log('PUT /api/updates/:id saving record', {
+      id: req.params.id,
+      category: normalizedCategory,
+      hasImages: Boolean(updateData.images?.length)
+    });
 
     update = await Update.findByIdAndUpdate(
       req.params.id,
@@ -406,7 +529,7 @@ router.put('/:id', protect, authorize('admin'), upload.array('images', 5), async
     console.error('Error in PUT /api/updates/:id:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 });
