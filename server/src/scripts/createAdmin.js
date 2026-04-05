@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
 const config = require('../config/config');
 const User = require('../models/User');
 require('dotenv').config();
@@ -22,11 +21,10 @@ const createAdmin = async () => {
 
     // Upsert admin user so running this script always enforces env credentials.
     const adminExists = await User.findOne({ email: adminEmail }).select('+password');
-    const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
     if (adminExists) {
       adminExists.name = adminName;
-      adminExists.password = hashedPassword;
+      adminExists.password = adminPassword;
       adminExists.role = 'admin';
       await adminExists.save();
       console.log('Admin user updated successfully:', adminExists.email);
@@ -36,7 +34,7 @@ const createAdmin = async () => {
     const admin = await User.create({
       name: adminName,
       email: adminEmail,
-      password: hashedPassword,
+      password: adminPassword,
       role: 'admin'
     });
 
