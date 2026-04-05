@@ -18,8 +18,21 @@ const app = express();
 connectDB();
 
 // CORS configuration
+const defaultOrigins = ['http://localhost:3000'];
+const envOrigins = (process.env.CLIENT_ORIGINS || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const allowedOrigins = [...new Set([...defaultOrigins, ...envOrigins])];
+
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin(origin, callback) {
+    // Allow non-browser requests (no Origin header) and configured origins.
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
