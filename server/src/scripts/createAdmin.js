@@ -20,16 +20,19 @@ const createAdmin = async () => {
       process.exit(1);
     }
 
-    // Check if admin user already exists
-    const adminExists = await User.findOne({ email: adminEmail });
+    // Upsert admin user so running this script always enforces env credentials.
+    const adminExists = await User.findOne({ email: adminEmail }).select('+password');
+    const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
     if (adminExists) {
-      console.log('Admin user already exists');
+      adminExists.name = adminName;
+      adminExists.password = hashedPassword;
+      adminExists.role = 'admin';
+      await adminExists.save();
+      console.log('Admin user updated successfully:', adminExists.email);
       process.exit(0);
     }
 
-    // Create admin user
-    const hashedPassword = await bcrypt.hash(adminPassword, 10);
     const admin = await User.create({
       name: adminName,
       email: adminEmail,
