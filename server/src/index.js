@@ -37,6 +37,14 @@ app.use((req, res, next) => {
   next();
 });
 
+// Friendly root route for uptime checks and manual browser visits
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Village Portfolio API is running',
+    health: '/api/health'
+  });
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/gallery', galleryRoutes);
