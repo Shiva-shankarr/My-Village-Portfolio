@@ -77,10 +77,26 @@ router.get('/', async (req, res) => {
 
     if (published === undefined || published === 'true') {
       const now = new Date();
-      query.publishDate = query.publishDate || {};
-      query.publishDate.$lte = now;
-      categoryQuery.publishDate = categoryQuery.publishDate || {};
-      categoryQuery.publishDate.$lte = now;
+
+      // Include content with publishDate in the past OR missing publishDate
+      // so legacy/admin-edited records without this field still render publicly.
+      if (query.publishDate && (query.publishDate.$gte || query.publishDate.$lte)) {
+        query.publishDate.$lte = now;
+      } else {
+        query.$or = [
+          { publishDate: { $lte: now } },
+          { publishDate: { $exists: false } }
+        ];
+      }
+
+      if (categoryQuery.publishDate && (categoryQuery.publishDate.$gte || categoryQuery.publishDate.$lte)) {
+        categoryQuery.publishDate.$lte = now;
+      } else {
+        categoryQuery.$or = [
+          { publishDate: { $lte: now } },
+          { publishDate: { $exists: false } }
+        ];
+      }
     }
 
     // Sorting options
@@ -214,7 +230,10 @@ router.get('/:id', async (req, res) => {
     const query = { _id: req.params.id };
     if (!includeUnpublished) {
       query.isPublished = { $ne: false };
-      query.publishDate = { $lte: new Date() };
+      query.$or = [
+        { publishDate: { $lte: new Date() } },
+        { publishDate: { $exists: false } }
+      ];
     }
 
     const update = await Update.findOneAndUpdate(
@@ -286,7 +305,7 @@ router.post('/', protect, authorize('admin'), upload.array('images', 5), async (
       priority,
       isPinned: isPinned === 'true' || isPinned === true,
       isPublished: isPublished === undefined ? true : isPublished === 'true' || isPublished === true,
-      publishDate: publishDate ? new Date(publishDate) : undefined,
+      publishDate: publishDate ? new Date(publishDate) : new Date(),
       images,
       cloudinaryIds,
       author: req.user?._id
@@ -340,7 +359,7 @@ router.put('/:id', protect, authorize('admin'), upload.array('images', 5), async
       priority,
       isPinned: isPinned === undefined ? update.isPinned : isPinned === 'true' || isPinned === true,
       isPublished: isPublished === undefined ? update.isPublished : isPublished === 'true' || isPublished === true,
-      publishDate: publishDate ? new Date(publishDate) : update.publishDate,
+      publishDate: publishDate ? new Date(publishDate) : (update.publishDate || new Date()),
       updatedAt: Date.now()
     };
 
