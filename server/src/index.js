@@ -25,10 +25,26 @@ const envOrigins = (process.env.CLIENT_ORIGINS || '')
   .filter(Boolean);
 const allowedOrigins = [...new Set([...defaultOrigins, ...envOrigins])];
 
+const matchesOriginPattern = (origin, pattern) => {
+  if (!pattern.includes('*')) {
+    return origin === pattern;
+  }
+
+  const escaped = pattern
+    .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*/g, '.*');
+  const regex = new RegExp(`^${escaped}$`);
+  return regex.test(origin);
+};
+
+const isOriginAllowed = (origin) => {
+  return allowedOrigins.some((pattern) => matchesOriginPattern(origin, pattern));
+};
+
 app.use(cors({
   origin(origin, callback) {
     // Allow non-browser requests (no Origin header) and configured origins.
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin || isOriginAllowed(origin)) {
       return callback(null, true);
     }
     return callback(new Error(`CORS blocked for origin: ${origin}`));
