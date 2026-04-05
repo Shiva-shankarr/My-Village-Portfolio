@@ -1,17 +1,17 @@
 const config = {
-  port: 5000,
+  port: parseInt(process.env.PORT || '5000', 10),
   mongodb: {
-    uri: 'mongodb+srv://shivasmart2800:wDLHCIzMz5tAjP2q@cluster0.geisthf.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0'
+    uri: process.env.MONGODB_URI || ''
   },
   jwt: {
-    secret: 'village_portfolio_secret_key_2024',
-    expiresIn: '30d'
+    secret: process.env.JWT_SECRET || 'replace_with_a_secure_jwt_secret',
+    expiresIn: process.env.JWT_EXPIRES_IN || '30d'
   },
-  env: 'development',
+  env: process.env.NODE_ENV || 'development',
   admin: {
-    email: 'shivashankar08@gmail.com',
-    password: 'admin123',
-    name: 'Admin'
+    email: process.env.ADMIN_EMAIL || '',
+    password: process.env.ADMIN_PASSWORD || '',
+    name: process.env.ADMIN_NAME || 'Admin'
   }
 };
 

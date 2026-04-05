@@ -1,13 +1,21 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Container, Row, Col, Card, Spinner } from 'react-bootstrap';
 import { galleryAPI } from '../services/api';
+import config from '../config/config';
 
 function Gallery() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
-  const [activeCategory, setActiveCategory] = useState('all');
+  const [activeCategory, setActiveCategory] = useState(searchParams.get('category') || 'all');
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const categoryFromQuery = searchParams.get('category') || 'all';
+    setActiveCategory(categoryFromQuery);
+  }, [searchParams]);
 
   useEffect(() => {
     const fetchGalleryItems = async () => {
@@ -24,6 +32,8 @@ function Gallery() {
         if (response.data?.data && response.data.data.length > 0) {
           const uniqueCategories = [...new Set(response.data.data.map(item => item.category))];
           setCategories(uniqueCategories);
+        } else {
+          setCategories([]);
         }
         setError(null);
       } catch (error) {
@@ -40,7 +50,19 @@ function Gallery() {
 
   const handleCategoryChange = (category) => {
     setActiveCategory(category);
+    if (category === 'all') {
+      setSearchParams({});
+      return;
+    }
+    setSearchParams({ category });
   };
+
+  const formatCategory = (value) => {
+    if (!value) return 'General';
+    return value.charAt(0).toUpperCase() + value.slice(1);
+  };
+
+  const availableCategories = [...new Set([...config.categories.gallery, ...categories])];
 
   if (loading) {
     return (
@@ -62,13 +84,13 @@ function Gallery() {
         >
           All
         </button>
-        {categories.map((category) => (
+        {availableCategories.map((category) => (
           <button
             key={category}
             className={`btn ${activeCategory === category ? 'btn-primary' : 'btn-outline-primary'} m-1`}
             onClick={() => handleCategoryChange(category)}
           >
-            {category.charAt(0).toUpperCase() + category.slice(1)}
+            {formatCategory(category)}
           </button>
         ))}
       </div>
@@ -93,12 +115,15 @@ function Gallery() {
                   src={item.imageUrl}
                   alt={item.title}
                   style={{ height: '200px', objectFit: 'cover' }}
+                  onError={(event) => {
+                    event.currentTarget.src = 'https://via.placeholder.com/600x400?text=Image+Unavailable';
+                  }}
                 />
                 <Card.Body>
                   <Card.Title>{item.title}</Card.Title>
                   <Card.Text>{item.description}</Card.Text>
                   <div className="badge bg-primary bg-opacity-10 text-primary">
-                    {item.category.charAt(0).toUpperCase() + item.category.slice(1)}
+                    {formatCategory(item.category)}
                   </div>
                 </Card.Body>
               </Card>

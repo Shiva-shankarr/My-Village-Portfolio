@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 
 const Navigation = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -7,6 +7,7 @@ const Navigation = () => {
   const [searchValue, setSearchValue] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [searchHistory, setSearchHistory] = useState([]);
+  const location = useLocation();
   const navigate = useNavigate();
 
   // Handle scroll effect
@@ -31,12 +32,31 @@ const Navigation = () => {
   }, []);
 
   const menuItems = [
-    { label: 'Home', href: '#home' },
-    { label: 'About', href: '#about' },
-    { label: 'Gallery', href: '#gallery' },
-    { label: 'Videos', href: '#videos' },
-    { label: 'Updates', href: '#updates' },
+    { label: 'Home', to: '/' },
+    { label: 'Gallery', to: '/gallery' },
+    { label: 'Videos', to: '/videos' },
+    { label: 'Updates', to: '/updates' },
   ];
+
+  const scrollToAbout = () => {
+    const aboutSection = document.getElementById('about');
+    if (aboutSection) {
+      aboutSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const handleAboutClick = (event) => {
+    event.preventDefault();
+    setIsMenuOpen(false);
+
+    if (location.pathname === '/') {
+      scrollToAbout();
+      return;
+    }
+
+    navigate('/');
+    setTimeout(scrollToAbout, 200);
+  };
 
   const filteredSuggestions = searchValue
     ? searchHistory.filter((item) =>
@@ -119,25 +139,30 @@ const Navigation = () => {
             )}
           </form>
           <ul className="navbar-nav ms-auto">
+            <li className="nav-item">
+              <a href="/#about" className="nav-link" onClick={handleAboutClick}>
+                About
+              </a>
+            </li>
             {menuItems.map((item) => (
-              <li key={item.href} className="nav-item">
-                <a
-                  href={item.href}
+              <li key={item.to} className="nav-item">
+                <NavLink
+                  to={item.to}
                   className="nav-link"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {item.label}
-                </a>
+                </NavLink>
               </li>
             ))}
             <li className="nav-item">
-              <Link
+              <NavLink
                 to="/login"
                 className="nav-link"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Admin
-              </Link>
+              </NavLink>
             </li>
           </ul>
         </div>

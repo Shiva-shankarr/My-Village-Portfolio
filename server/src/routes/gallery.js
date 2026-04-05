@@ -14,6 +14,8 @@ const upload = multer({
   }
 });
 
+const toDataUri = (file) => `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
+
 // @route   GET /api/gallery
 // @desc    Get all gallery items
 // @access  Public
@@ -186,7 +188,7 @@ router.post('/', protect, authorize('admin'), upload.single('image'), async (req
     }
 
     // Upload to cloudinary
-    const result = await cloudinary.uploader.upload(req.file.buffer.toString('base64'), {
+    const result = await cloudinary.uploader.upload(toDataUri(req.file), {
       folder: 'gallery',
       resource_type: 'auto',
       quality: 'auto',
@@ -280,7 +282,7 @@ router.put('/:id', protect, authorize('admin'), upload.single('image'), async (r
       await cloudinary.uploader.destroy(gallery.cloudinaryId);
 
       // Upload new image
-      const result = await cloudinary.uploader.upload(req.file.buffer.toString('base64'), {
+      const result = await cloudinary.uploader.upload(toDataUri(req.file), {
         folder: 'gallery',
         resource_type: 'auto',
         quality: 'auto',

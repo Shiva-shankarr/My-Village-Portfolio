@@ -9,6 +9,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { galleryAPI } from '../../services/api';
 import { toast } from 'react-toastify';
+import config from '../../config/config';
 
 function AdminGallery() {
   const [items, setItems] = useState([]);
@@ -25,14 +26,12 @@ function AdminGallery() {
     image: null
   });
 
-  const categories = [
-    'Nature',
-    'Culture',
-    'Events',
-    'People',
-    'Infrastructure',
-    'Development'
-  ];
+  const categories = config.categories.gallery;
+
+  const formatCategory = (value) => {
+    if (!value) return 'General';
+    return value.charAt(0).toUpperCase() + value.slice(1);
+  };
 
   // Search is submitted manually, so this effect intentionally tracks filter changes.
   useEffect(() => {
@@ -82,7 +81,8 @@ function AdminGallery() {
       setSelectedItem(null);
       fetchGalleryItems();
     } catch (error) {
-      toast.error(selectedItem ? 'Failed to update gallery item' : 'Failed to add gallery item');
+      const message = error.response?.data?.message || (selectedItem ? 'Failed to update gallery item' : 'Failed to add gallery item');
+      toast.error(message);
     }
   };
 
@@ -147,7 +147,7 @@ function AdminGallery() {
           <option value="">Select a category</option>
           {categories.map(category => (
             <option key={category} value={category}>
-              {category}
+              {formatCategory(category)}
             </option>
           ))}
         </Form.Select>
@@ -222,7 +222,7 @@ function AdminGallery() {
                     variant={filter === category ? 'primary' : 'light'}
                     onClick={() => setFilter(category)}
                   >
-                    {category}
+                    {formatCategory(category)}
                   </Button>
                 ))}
               </div>
@@ -280,7 +280,7 @@ function AdminGallery() {
                 <Card.Title>{item.title}</Card.Title>
                 <Card.Text className="text-muted">{item.description}</Card.Text>
                 <span className="badge bg-primary bg-opacity-10 text-primary">
-                  {item.category}
+                  {formatCategory(item.category)}
                 </span>
               </Card.Body>
             </Card>

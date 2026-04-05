@@ -6,7 +6,7 @@ import developerPic from '../../assets/Images/Developer_Pic.jpg';
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
-  const contactEmail = process.env.REACT_APP_CONTACT_EMAIL || 'contact@villageportfolio.com';
+  const contactEmail = 'techvedaxlabs@gmail.com';
 
   return (
     <footer style={{ backgroundColor: '#08406B' }} className="text-white py-5">

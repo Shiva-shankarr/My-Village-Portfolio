@@ -6,9 +6,7 @@ const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 const api = axios.create({
   baseURL: BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  timeout: config.api.timeout,
 });
 
 // Add a flag to track if we're already redirecting
@@ -21,6 +19,15 @@ api.interceptors.request.use(
     if (token) {
       axiosConfig.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Let the browser set multipart boundaries automatically for FormData payloads.
+    const isFormData = typeof FormData !== 'undefined' && axiosConfig.data instanceof FormData;
+    if (isFormData) {
+      delete axiosConfig.headers['Content-Type'];
+    } else if (!axiosConfig.headers['Content-Type']) {
+      axiosConfig.headers['Content-Type'] = 'application/json';
+    }
+
     return axiosConfig;
   },
   (error) => {

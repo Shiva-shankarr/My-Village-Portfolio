@@ -14,6 +14,8 @@ const upload = multer({
   }
 });
 
+const toDataUri = (file) => `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
+
 // @route   GET /api/updates
 // @desc    Get all updates with pagination, search, and filtering
 // @access  Public
@@ -262,7 +264,7 @@ router.post('/', protect, authorize('admin'), upload.array('images', 5), async (
     // Upload images to cloudinary if any
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
-        const result = await cloudinary.uploader.upload(file.buffer.toString('base64'), {
+        const result = await cloudinary.uploader.upload(toDataUri(file), {
           folder: 'updates',
           resource_type: 'auto',
           quality: 'auto',
@@ -353,7 +355,7 @@ router.put('/:id', protect, authorize('admin'), upload.array('images', 5), async
       const images = [];
       const cloudinaryIds = [];
       for (const file of req.files) {
-        const result = await cloudinary.uploader.upload(file.buffer.toString('base64'), {
+        const result = await cloudinary.uploader.upload(toDataUri(file), {
           folder: 'updates',
           resource_type: 'auto',
           quality: 'auto',

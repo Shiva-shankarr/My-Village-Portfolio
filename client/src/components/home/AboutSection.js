@@ -1,8 +1,10 @@
 import React from 'react';
+import { FaLandmark, FaUsers, FaLeaf, FaPalette } from 'react-icons/fa';
+import natureCover from '../../assets/Images/Nature Pic.png';
 
-const FeatureCard = ({ icon, title, description }) => (
+const FeatureCard = ({ Icon, title, description }) => (
   <div className="custom-card p-4">
-    <div className="display-4 mb-3">{icon}</div>
+    <div className="display-5 mb-3 text-success"><Icon /></div>
     <h3 className="fs-4 fw-semibold mb-2">{title}</h3>
     <p className="text-muted">{description}</p>
   </div>
@@ -11,22 +13,22 @@ const FeatureCard = ({ icon, title, description }) => (
 const AboutSection = () => {
   const features = [
     {
-      icon: '🏠',
+      Icon: FaLandmark,
       title: 'Rich Heritage',
       description: 'Discover the deep-rooted traditions and cultural heritage of Puriya Thanda.'
     },
     {
-      icon: '👥',
+      Icon: FaUsers,
       title: 'Unity in Diversity',
       description: 'Experience the strong community bonds and inclusive nature of our village.'
     },
     {
-      icon: '🌿',
+      Icon: FaLeaf,
       title: 'Natural Beauty',
       description: 'Surrounded by pristine nature and scenic landscapes that captivate visitors.'
     },
     {
-      icon: '🎉',
+      Icon: FaPalette,
       title: 'Vibrant Culture',
       description: 'Celebrate our festivals, traditions, and cultural events throughout the year.'
     }
@@ -61,7 +63,7 @@ const AboutSection = () => {
             <div className="row g-0">
               <div className="col-md-6">
                 <img
-                  src="/village-placeholder.jpg"
+                  src={natureCover}
                   alt="Village Life"
                   className="img-fluid h-100 object-fit-cover"
                 />
