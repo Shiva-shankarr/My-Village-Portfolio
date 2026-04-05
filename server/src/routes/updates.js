@@ -366,7 +366,11 @@ router.put('/:id', protect, authorize('admin'), upload.array('images', 5), async
     // Handle new images if any
     if (req.files && req.files.length > 0) {
       // Delete old images from cloudinary
-      for (const cloudinaryId of update.cloudinaryIds) {
+      const previousCloudinaryIds = Array.isArray(update.cloudinaryIds)
+        ? update.cloudinaryIds.filter(Boolean)
+        : [];
+
+      for (const cloudinaryId of previousCloudinaryIds) {
         await cloudinary.uploader.destroy(cloudinaryId);
       }
 
@@ -399,6 +403,7 @@ router.put('/:id', protect, authorize('admin'), upload.array('images', 5), async
       data: update
     });
   } catch (error) {
+    console.error('Error in PUT /api/updates/:id:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -421,7 +426,11 @@ router.delete('/:id', protect, authorize('admin'), async (req, res) => {
     }
 
     // Delete images from cloudinary
-    for (const cloudinaryId of update.cloudinaryIds) {
+    const cloudinaryIds = Array.isArray(update.cloudinaryIds)
+      ? update.cloudinaryIds.filter(Boolean)
+      : [];
+
+    for (const cloudinaryId of cloudinaryIds) {
       await cloudinary.uploader.destroy(cloudinaryId);
     }
 
@@ -432,6 +441,7 @@ router.delete('/:id', protect, authorize('admin'), async (req, res) => {
       data: {}
     });
   } catch (error) {
+    console.error('Error in DELETE /api/updates/:id:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
