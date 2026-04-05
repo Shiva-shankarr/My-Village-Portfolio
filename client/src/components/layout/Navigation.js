@@ -85,7 +85,7 @@ const Navigation = () => {
     <nav className={`navbar navbar-expand-lg navbar-custom fixed-top ${isScrolled ? 'shadow-sm' : ''}`}>
       <div className="container">
         <Link to="/" className="navbar-brand text-white fs-4 fw-bold">
-          Puriya Thanda
+          Village Portfolio
         </Link>
 
         <button
